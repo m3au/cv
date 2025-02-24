@@ -1,0 +1,53 @@
+name: Build CV
+
+on:
+  push:
+    paths:
+      - "**.tex" # Trigger only on .tex file changes
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache TinyTeX
+        uses: actions/cache@v4
+        with:
+          path: ~/.TinyTeX
+          key: tinytex-${{ runner.os }}-${{ hashFiles('**/*.tex') }}
+          restore-keys: |
+            tinytex-${{ runner.os }}-
+
+      - name: Install TinyTeX
+        uses: r-lib/actions/setup-tinytex@v2
+        env:
+          # This tells setup-tinytex to use the cached version if available
+          TINYTEX_INSTALLER: cached
+
+      - name: Cache LaTeX packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.texlive
+            ~/.texmf
+          key: latex-packages-${{ runner.os }}-${{ hashFiles('**/*.tex') }}
+
+      - name: Build PDF
+        run: |
+          pdflatex -interaction=nonstopmode cv.tex
+          mv cv.pdf Bruno_Palma_Curriculum_Vitae.pdf
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: CV
+          path: Bruno_Palma_Curriculum_Vitae.pdf
+
+      - name: Update Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: Bruno_Palma_Curriculum_Vitae.pdf
